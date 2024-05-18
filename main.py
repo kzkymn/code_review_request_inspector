@@ -81,7 +81,9 @@ def _get_openai_client(api_key, api_version=None, azure_endpoint=None):
 
 def _review_code(client, diff_text):
     response = client.chat.completions.create(
-        model="gpt-4", messages=_create_messages(diff_text), temperature=0.0
+        model=AZURE_OPENAI_MODEL_NAME,
+        messages=_create_messages(diff_text),
+        temperature=0.0,
     )
     review = response.choices[0].message.content
     return review
