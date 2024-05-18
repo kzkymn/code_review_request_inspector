@@ -160,6 +160,6 @@ cython_debug/
 #.idea/
 
 # Dev env
-private_config.ini
+private/
 .vscode/
 *.code-workspace
