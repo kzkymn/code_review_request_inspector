@@ -21,6 +21,16 @@
 `config.ini`ファイルは、本ツールの動作に必要な設定を行うためのファイルです。以下の内容を参考に、適切な値を設定してください。
 
 ```ini:config.ini
+[service]
+provider = github  # 使用するサービスプロバイダーを指定します。github または gitlab を指定します。
+
+[github]
+url = https://api.github.com  # GitHub APIのURLを指定します。
+token = YOUR_GITHUB_TOKEN  # GitHubのAPIトークンを指定します。GitHubの個人設定から取得できます。
+owner = REPO_OWNER  # リポジトリの所有者の名前を指定します。
+repo = REPO_NAME  # 対象のリポジトリ名を指定します。
+pull_request_number = PULL_REQUEST_NUMBER  # 対象のプルリクエスト番号を指定します。
+
 [gitlab]
 url = https://gitlab.com/  # GitLabのURLを指定します。通常はhttps://gitlab.com/です。
 private_token = your_private_token  # GitLabのプライベートトークンを指定します。GitLabのユーザー設定から取得できます。
@@ -28,12 +38,12 @@ project_id = 11111111  # 対象プロジェクトのIDを指定します。プ�
 merge_request_iid = 1  # 対象のマージリクエストのIIDを指定します。マージリクエストのURL末尾にある数値に相当します。
 
 [api]
-provider = openai  # 使用するAPIプロバイダーを指定します。openaiまたはazureを指定できます。
+provider = openai  # 使用するAPIプロバイダーを指定します。openai または azure を指定できます。
 openai_api_key = your_openai_api_key  # OpenAIのAPIキーを指定します。OpenAIのアカウントから取得できます。
+chatgpt_model_name = gpt-4 # 使用するOpenAIのモデル名を指定します。通常はgpt-4を指定します。
 azure_openai_api_key = your_azure_openai_api_key  # Azure OpenAIのAPIキーを指定します。Azureポータルから取得できます。
 azure_openai_api_version = 2024-02-15-preview  # Azure OpenAIのAPIバージョンを指定します。通常はデフォルトのままで問題ありません。
 azure_openai_endpoint = https://your-azure-endpoint  # Azure OpenAIのエンドポイントを指定します。Azureポータルから確認できます。
-azure_openai_model_name = gpt-4  # 使用するAzure OpenAIのモデル名を指定します。Azureにデプロイしたときのモデル名を指定してください。
 
 [locale]
 language = Japanese  # コードレビューのフィードバックを提供する言語を指定します。例: Japanese, English
