@@ -21,6 +21,16 @@
 The `config.ini` file is used to configure the necessary settings for this tool. Refer to the following content and set appropriate values.
 
 ```ini:config.ini
+[service]
+provider = github  # Specify the service provider to use. Choose either github or gitlab.
+
+[github]
+url = https://api.github.com  # Specify the URL for the GitHub API.
+token = YOUR_GITHUB_TOKEN  # Specify your GitHub API token. You can get this from your GitHub personal settings.
+owner = REPO_OWNER  # Specify the name of the repository owner.
+repo = REPO_NAME  # Specify the name of the target repository.
+pull_request_number = PULL_REQUEST_NUMBER  # Specify the number of the target pull request.
+
 [gitlab]
 url = https://gitlab.com/  # Specify the GitLab URL. Usually, it is https://gitlab.com/.
 private_token = your_private_token  # Specify your GitLab private token. You can obtain it from your GitLab user settings.

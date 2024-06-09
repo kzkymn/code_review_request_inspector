@@ -1,26 +1,23 @@
 import configparser
-import os
+from abc import ABC, abstractmethod
 
 import openai
 import requests
 
 # 設定ファイルを読み込む
 config = configparser.ConfigParser()
-config.read("config.ini", encoding="utf-8")
+config.read("./config.ini", encoding="utf-8")
 
-# GitLabの設定
-GITLAB_URL = config["gitlab"]["url"]
-PRIVATE_TOKEN = config["gitlab"]["private_token"]
-PROJECT_ID = config["gitlab"]["project_id"]
-MERGE_REQUEST_IID = config["gitlab"]["merge_request_iid"]
+# サービス設定
+SERVICE_PROVIDER = config["service"]["provider"]
 
-# API設定
-API_PROVIDER = config["api"]["provider"]
+# OPENAI API設定
+OPENAI_API_PROVIDER_TYPE = config["api"]["provider"]
 OPENAI_API_KEY = config["api"]["openai_api_key"]
 AZURE_OPENAI_API_KEY = config["api"]["azure_openai_api_key"]
 AZURE_OPENAI_ENDPOINT = config["api"]["azure_openai_endpoint"]
 AZURE_OPENAI_API_VERSION = config["api"]["azure_openai_api_version"]
-AZURE_OPENAI_MODEL_NAME = config["api"]["azure_openai_model_name"]
+CHATGPT_MODEL_NAME = config["api"]["chatgpt_model_name"]
 
 # 言語設定
 LANGUAGE = config["locale"]["language"]
@@ -29,36 +26,107 @@ LANGUAGE = config["locale"]["language"]
 PROMPT_FOR_REVIEW = "Please review the following code changes and provide feedback in {}. If necessary, please include suggestions for better code improvements in your feedback. :\n\n{}"
 
 
-def get_merge_request_commits():
-    headers = {"Private-Token": PRIVATE_TOKEN}
+class CodeReviewService(ABC):
+    def __init__(self, config):
+        self.config = config
 
-    api_url = f"{GITLAB_URL}/api/v4/projects/{PROJECT_ID}/merge_requests/{MERGE_REQUEST_IID}/commits"
+    @abstractmethod
+    def get_commits(self):
+        pass
 
-    response = requests.get(api_url, headers=headers)
-
-    if response.status_code == 200:
-        commits = response.json()
-        return commits
-    else:
-        print(f"Failed to retrieve commits: {response.status_code}")
-        return []
+    @abstractmethod
+    def get_commit_diff(self, commit_id):
+        pass
 
 
-def get_commit_diff(commit_id):
-    headers = {"Private-Token": PRIVATE_TOKEN}
+class GitLabService(CodeReviewService):
+    def __init__(self, config):
+        super().__init__(config)
+        self.url = config["gitlab"]["url"]
+        self.private_token = config["gitlab"]["private_token"]
+        self.project_id = config["gitlab"]["project_id"]
+        self.merge_request_iid = config["gitlab"]["merge_request_iid"]
 
-    api_url = (
-        f"{GITLAB_URL}/api/v4/projects/{PROJECT_ID}/repository/commits/{commit_id}/diff"
-    )
+    def get_commits(self):
+        headers = {"Private-Token": self.private_token}
+        api_url = f"{self.url}/api/v4/projects/{self.project_id}/merge_requests/{self.merge_request_iid}/commits"
 
-    response = requests.get(api_url, headers=headers)
+        response = requests.get(api_url, headers=headers)
 
-    if response.status_code == 200:
-        diffs = response.json()
-        return diffs
-    else:
-        print(f"Failed to retrieve commit diff: {response.status_code}")
-        return []
+        if response.status_code == 200:
+            commits = response.json()
+            # GitHubのレスポンス形式に合わせてキーを変換
+            for commit in commits:
+                commit["sha"] = commit.pop("id")
+                commit["commit"] = {
+                    "message": commit.pop("title"),
+                    "author": {
+                        "name": commit.pop("author_name"),
+                        "date": commit.pop("created_at"),
+                    },
+                }
+            return commits
+        else:
+            print(f"Failed to retrieve commits from GitLab: {response.status_code}")
+            return []
+
+    def get_commit_diff(self, commit_id):
+        headers = {"Private-Token": self.private_token}
+        api_url = f"{self.url}/api/v4/projects/{self.project_id}/repository/commits/{commit_id}/diff"
+
+        response = requests.get(api_url, headers=headers)
+
+        if response.status_code == 200:
+            diffs = response.json()
+            for diff in diffs:
+                if "diff" in diff:
+                    diff["patch"] = diff.pop("diff")
+            return diffs
+        else:
+            print(f"Failed to retrieve commit diff from GitLab: {response.status_code}")
+            return []
+
+
+class GitHubService(CodeReviewService):
+    def __init__(self, config):
+        super().__init__(config)
+        self.url = config["github"]["url"]
+        self.token = config["github"]["token"]
+        self.owner = config["github"]["owner"]
+        self.repo = config["github"]["repo"]
+        self.pull_request_number = config["github"]["pull_request_number"]
+
+    def get_commits(self):
+        headers = {"Authorization": f"token {self.token}"}
+        api_url = f"{self.url}/repos/{self.owner}/{self.repo}/pulls/{self.pull_request_number}/commits"
+
+        response = requests.get(api_url, headers=headers)
+
+        if response.status_code == 200:
+            commits = response.json()
+            return commits
+        else:
+            print(f"Failed to retrieve commits from GitHub: {response.status_code}")
+            return []
+
+    def get_commit_diff(self, commit_id):
+        headers = {"Authorization": f"token {self.token}"}
+        api_url = f"{self.url}/repos/{self.owner}/{self.repo}/commits/{commit_id}"
+
+        response = requests.get(api_url, headers=headers)
+
+        if response.status_code == 200:
+            commit_data = response.json()
+            diffs = commit_data.get("files", [])
+            return diffs
+        else:
+            print(f"Failed to retrieve commit diff from GitHub: {response.status_code}")
+            return []
+
+
+def get_diff_texts(diffs):
+    diff_texts = [diff.get("patch") for diff in diffs if "patch" in diff]
+    return diff_texts
 
 
 def _create_messages(diff_text):
@@ -81,7 +149,7 @@ def _get_openai_client(api_key, api_version=None, azure_endpoint=None):
 
 def _review_code(client, diff_text):
     response = client.chat.completions.create(
-        model=AZURE_OPENAI_MODEL_NAME,
+        model=CHATGPT_MODEL_NAME,
         messages=_create_messages(diff_text),
         temperature=0.0,
     )
@@ -103,32 +171,57 @@ def review_code_with_azure(diff_text):
     return _review_code(client, diff_text)
 
 
-if __name__ == "__main__":
-    commits = get_merge_request_commits()
+def get_commits_and_diffs(service):
+    commits = service.get_commits()
+    diffs = []
 
     if commits:
-        print("New commits in the merge request:")
-        all_diffs = []
         for commit in commits:
-            print(f"Commit ID: {commit['id']}")
-            print(f"Title: {commit['title']}")
-            print(f"Author: {commit['author_name']}")
-            print(f"Date: {commit['created_at']}")
+            diffs.extend(
+                service.get_commit_diff(
+                    commit["id"] if "id" in commit else commit["sha"]
+                )
+            )
+
+    return commits, diffs
+
+
+def review_code(service, review_func):
+    commits, diffs = get_commits_and_diffs(service)
+
+    if commits:
+        print("New commits in the pull/merge request:")
+        for commit in commits:
+            print(f"Commit ID: {commit.get('sha')}")
+            print(f"Title: {commit['commit']['message']}")
+            print(f"Author: {commit['commit']['author']['name']}")
+            print(f"Date: {commit['commit']['author']['date']}")
             print("=" * 40)
 
-            diff = get_commit_diff(commit["id"])
-            if diff:
-                all_diffs.extend(diff)
+        if diffs:
+            diff_texts = get_diff_texts(diffs)
+            diff_text = "\n".join(diff_texts)
 
-        if all_diffs:
-            diff_text = "\n".join([d["diff"] for d in all_diffs])
-            if API_PROVIDER == "azure":
-                review = review_code_with_azure(diff_text)
-            else:
-                review = review_code_with_openai(diff_text)
+            review = review_func(diff_text)
 
-            print("Code Review for the Merge Request:")
+            print("Code Review for the Pull/Merge Request:")
             print(review)
             print("=" * 40)
     else:
         print("No commits found or failed to retrieve commits.")
+
+
+if __name__ == "__main__":
+    if SERVICE_PROVIDER == "gitlab":
+        service = GitLabService(config)
+    elif SERVICE_PROVIDER == "github":
+        service = GitHubService(config)
+    else:
+        raise ValueError(f"Unsupported service provider: {SERVICE_PROVIDER}")
+
+    if OPENAI_API_PROVIDER_TYPE == "azure":
+        review_func = review_code_with_azure
+    else:
+        review_func = review_code_with_openai
+
+    review_code(service=service, review_func=review_func)
