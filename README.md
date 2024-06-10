@@ -1,6 +1,6 @@
-# gitlab_merge_request_reviewer
+# code_review_request_inspector
 
-`gitlab_merge_request_reviewer` is a tool that allows ChatGPT to perform code reviews on GitLab merge requests. This tool uses the OpenAI or Azure OpenAI API to provide feedback on code changes.
+The `code_review_request_inspector` is a tool that allows ChatGPT to understand and review the contents of GitLab merge requests and GitHub pull requests. This tool uses the OpenAI API or Azure OpenAI API to provide feedback on code changes.
 
 ## How to Run
 

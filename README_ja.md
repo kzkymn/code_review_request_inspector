@@ -1,6 +1,6 @@
-# gitlab_merge_request_reviewer
+# code_review_request_inspector
 
-`gitlab_merge_request_reviewer`は、GitLabのマージリクエストに対するコードレビューをChatGPTに行わせるツールです。このツールは、OpenAIまたはAzure OpenAIのAPIを使用して、コードの変更点に対するフィードバックを提供します。
+`code_review_request_inspector`は、GitLabのマージリクエストおよびGitHubのプルリクエストの内容理解やコードレビューをChatGPTに行わせるツールです。このツールは、OpenAI APIまたはAzure OpenAIのAPIを使用して、コードの変更点に対するフィードバックを提供します。
 
 ## 実行方法
 
