@@ -47,6 +47,9 @@ azure_openai_model_name = gpt-4  # Specify the Azure OpenAI model name to use. S
 
 [locale]
 language = Japanese  # Specify the language for providing code review feedback. Example: Japanese, English
+
+[ssl]
+verify = True  # Whether to verify the SSL certificate in requests.get(). It should generally always be set to True.
 ```
 
 ### Running the Main Process

@@ -1,3 +1,4 @@
+import ast
 import configparser
 from abc import ABC, abstractmethod
 
@@ -26,6 +27,20 @@ LANGUAGE = config["locale"]["language"]
 PROMPT_FOR_REVIEW = "Please review the following code changes and provide feedback in {}. If necessary, please include suggestions for better code improvements in your feedback. :\n\n{}"
 
 
+def safe_eval(expr):
+    try:
+        return ast.literal_eval(expr)
+    except (ValueError, SyntaxError) as e:
+        print(f"Error: {e}")
+        return None
+
+
+# SSL 設定
+DO_VERIFY = safe_eval(config["ssl"]["verify"])
+if DO_VERIFY is not None or (isinstance(DO_VERIFY, bool) == False):
+    DO_VERIFY = True
+
+
 class CodeReviewService(ABC):
     def __init__(self, config):
         self.config = config
@@ -51,7 +66,7 @@ class GitLabService(CodeReviewService):
         headers = {"Private-Token": self.private_token}
         api_url = f"{self.url}/api/v4/projects/{self.project_id}/merge_requests/{self.merge_request_iid}/commits"
 
-        response = requests.get(api_url, headers=headers)
+        response = requests.get(api_url, headers=headers, verify=DO_VERIFY)
 
         if response.status_code == 200:
             commits = response.json()
@@ -74,7 +89,7 @@ class GitLabService(CodeReviewService):
         headers = {"Private-Token": self.private_token}
         api_url = f"{self.url}/api/v4/projects/{self.project_id}/repository/commits/{commit_id}/diff"
 
-        response = requests.get(api_url, headers=headers)
+        response = requests.get(api_url, headers=headers, verify=DO_VERIFY)
 
         if response.status_code == 200:
             diffs = response.json()
@@ -100,7 +115,7 @@ class GitHubService(CodeReviewService):
         headers = {"Authorization": f"token {self.token}"}
         api_url = f"{self.url}/repos/{self.owner}/{self.repo}/pulls/{self.pull_request_number}/commits"
 
-        response = requests.get(api_url, headers=headers)
+        response = requests.get(api_url, headers=headers, verify=DO_VERIFY)
 
         if response.status_code == 200:
             commits = response.json()
@@ -113,7 +128,7 @@ class GitHubService(CodeReviewService):
         headers = {"Authorization": f"token {self.token}"}
         api_url = f"{self.url}/repos/{self.owner}/{self.repo}/commits/{commit_id}"
 
-        response = requests.get(api_url, headers=headers)
+        response = requests.get(api_url, headers=headers, verify=DO_VERIFY)
 
         if response.status_code == 200:
             commit_data = response.json()

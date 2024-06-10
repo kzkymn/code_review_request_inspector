@@ -47,6 +47,9 @@ azure_openai_endpoint = https://your-azure-endpoint  # Azure OpenAIのエンド�
 
 [locale]
 language = Japanese  # コードレビューのフィードバックを提供する言語を指定します。例: Japanese, English
+
+[ssl]
+verify = True  # requests.get()でSSLの証明書の検証をするかどうか。基本的には必ずTrueにすること。
 ```
 
 ### メイン処理の実行
