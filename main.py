@@ -37,7 +37,7 @@ def safe_eval(expr):
 
 # SSL 設定
 DO_VERIFY = safe_eval(config["ssl"]["verify"])
-if DO_VERIFY is not None or (isinstance(DO_VERIFY, bool) == False):
+if DO_VERIFY is None or (isinstance(DO_VERIFY, bool) == False):
     DO_VERIFY = True
 
 
